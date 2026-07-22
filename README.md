@@ -1,46 +1,84 @@
-# 照片整理工具 (Photo Organizer)
+# Photo Organizer
 
-本地 AI (CLIP) 照片整理：人像/风景分类 + 相似风景聚类 + 网页浏览管理。照片不上传、全程离线。
+Offline AI photo organizer powered by **CLIP**: classifies people vs. scenery, groups similar
+scenes into clusters, and ships with a local web UI for browsing and fixing results.
+**Photos never leave your machine — everything runs locally.**
 
-## 文件说明
+## Features
 
-| 文件 | 用途 |
+- **People / scenery classification** — zero-shot via CLIP text prompts, no training data needed.
+- **Scene clustering** — visually similar landscapes are grouped into `cluster_XXX` folders.
+- **Auto-labeled clusters** — each cluster folder gets a descriptive scene name (e.g. `cluster_003_snow_mountain`).
+- **Local web UI** — thumbnail grid, full-size viewer, drag photos between folders, rename clusters.
+- **Phone access** — optional LAN mode lets you review photos from your phone on the same Wi-Fi.
+- **Embedding cache** — re-clustering is near-instant; images are only encoded once.
+- **RAW-aware** — paired RAW/XMP sidecar files follow the JPEG when you move it.
+
+## Files
+
+| File | Purpose |
 |---|---|
-| `organize_photos.py` | 主整理脚本：扫描 → CLIP 编码 → 人像/风景分类 → 风景聚类 → 复制落地 |
-| `label_clusters.py` | 给 `cluster_XXX` 文件夹自动起中文名（如 `cluster_003_雪山`），需插上照片硬盘 |
-| `app.py` + `static/` | 本地网页应用：浏览缩略图、移动照片、重命名文件夹 |
-| `start_photo_app.bat` | 双击启动网页应用（仅本机访问） |
-| `start_photo_app_lan.bat` | 双击启动网页应用（手机同 WiFi 可访问，首次运行允许防火墙） |
-| `label_clusters.bat` | 双击运行聚类自动命名 |
+| `organize_photos.py` | Main pipeline: scan → CLIP encode → people/scenery split → cluster → write out |
+| `label_clusters.py` | Auto-names each `cluster_XXX` folder from its dominant scene |
+| `app.py` + `static/` | Local web app: browse thumbnails, move photos, rename folders |
+| `start_photo_app.bat` | Launch the web app (localhost only) |
+| `start_photo_app_lan.bat` | Launch the web app on your LAN (phone access; allow firewall on first run) |
+| `label_clusters.bat` | Run cluster auto-naming |
+| `make_test_photos*.py` | Generate synthetic photos for testing the pipeline |
 
-## 日常用法
+## Setup
 
-1. 插上照片硬盘 (D:)
-2. 双击 `start_photo_app.bat`，浏览器自动打开 http://127.0.0.1:8765
-3. 手机访问：改用 `start_photo_app_lan.bat`，手机浏览器打开窗口里打印的 `http://192.168.x.x:8765`
-
-网页功能：
-- 顶部两个下拉框选 地区 → 文件夹，缩略图网格浏览，点图看大图（左右点切换）
-- 「选择」→ 勾选照片 →「移动到…」把分错的照片挪到正确文件夹（配对 RAW/XMP 自动跟随）
-- 「重命名文件夹」给当前聚类文件夹起名
-
-## 新照片再次整理
-
-```powershell
-cd C:\Users\ghs\photo-organizer
-.\.venv\Scripts\python.exe organize_photos.py --input "D:\新照片文件夹" --output "D:\新照片_整理" --region-mode
+```bash
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
-常用参数：`--min-cluster-size 8`（聚类更粗）、`--move`（移动而非复制）、`--limit 100`（试跑）。
-已算过的照片有缓存（`.embeddings_cache.pkl`），重跑聚类秒级完成。
+Requires Python 3.9+. CLIP weights download automatically on first run (GPU optional — CPU works,
+just slower).
 
-## 输出结构
+## Usage
+
+**Organize a folder of photos**
+
+```bash
+python organize_photos.py --input "<photo folder>" --output "<output folder>" --region-mode
+```
+
+Useful flags:
+
+| Flag | Effect |
+|---|---|
+| `--min-cluster-size 8` | Coarser clustering (fewer, larger groups) |
+| `--move` | Move files instead of copying |
+| `--limit 100` | Dry-run on a small subset |
+
+Already-encoded photos are cached in `.embeddings_cache.pkl`, so re-running the clustering step
+takes seconds.
+
+**Browse and fix results**
+
+1. Run `start_photo_app.bat` — the browser opens at `http://127.0.0.1:8765`.
+2. For phone access, run `start_photo_app_lan.bat` instead and open the printed
+   `http://192.168.x.x:8765` on your phone.
+
+In the web UI:
+
+- Pick **region → folder** from the two dropdowns, then browse the thumbnail grid; click any photo
+  for the full-size viewer (click left/right edges to page through).
+- **Select** → tick photos → **Move to…** to relocate misclassified shots (paired RAW/XMP follow along).
+- **Rename folder** to give the current cluster a meaningful name.
+
+## Output structure
 
 ```
-输出根目录\
-  <地区>\people\              人像
-  <地区>\uncertain\           AI 不确定（人工复核）
-  <地区>\scenery\cluster_XXX\ 相似风景一组
-  <地区>\scenery\misc\        零散风景
-  manifest.json               每张图 原路径→去向 记录
+<output root>/
+  <region>/people/              portraits
+  <region>/uncertain/           low-confidence, needs a human look
+  <region>/scenery/cluster_XXX/ one visually similar group
+  <region>/scenery/misc/        leftover scenery
+  manifest.json                 per-photo record: original path → destination
 ```
+
+## License
+
+MIT
