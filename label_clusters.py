@@ -3,7 +3,8 @@ Auto-name scenery cluster folders using cached CLIP embeddings.
 cluster_003 -> cluster_003_雪山  (folder rename; manifest.json updated to match)
 
 Usage:
-    python label_clusters.py --output "D:\\暑假旅程_整理"
+    python label_clusters.py --output "D:\\暑假旅程_整理" --dry-run   # look first
+    python label_clusters.py --output "D:\\暑假旅程_整理"             # then rename
 """
 import argparse
 import json
@@ -47,9 +48,14 @@ def main():
     parser.add_argument("--output", default=r"D:\暑假旅程_整理", help="Organized output root.")
     parser.add_argument("--model", default="ViT-B-32")
     parser.add_argument("--pretrained", default="laion2b_s34b_b79k")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Print the proposed names and change nothing.")
     args = parser.parse_args()
 
     root = Path(args.output)
+    if not root.is_dir():
+        raise SystemExit(f"output root not found: {root}\n"
+                         "Is the external drive plugged in?")
     manifest_path = root / "manifest.json"
     cache_path = root / ".embeddings_cache.pkl"
     with open(manifest_path, "r", encoding="utf-8") as f:
@@ -57,18 +63,33 @@ def main():
     with open(cache_path, "rb") as f:
         cache = pickle.load(f)
 
-    # dest jpg -> embedding via original src file stat
+    # dest jpg -> embedding, looked up by the ORIGINAL src file's stat.
+    # That means the source tree must still exist; if it doesn't, every lookup
+    # misses and the run silently relabels nothing. Count the misses and say so.
     dest_emb = {}
+    considered = missing_src = no_cache = 0
     for entry in manifest:
         dest = Path(entry["dest"])
         if dest.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp", ".heic"}:
             continue
+        considered += 1
         src = Path(entry["src"])
         if not src.exists():
+            missing_src += 1
             continue
         key = cache_key(src)
         if key in cache:
             dest_emb[dest.resolve()] = cache[key]
+        else:
+            no_cache += 1
+
+    print(f"{len(dest_emb)}/{considered} photos have a usable embedding "
+          f"(source missing: {missing_src}, not in cache: {no_cache})")
+    if not dest_emb:
+        raise SystemExit(
+            "No embeddings resolved, so nothing could be labelled.\n"
+            "Embeddings are keyed by the ORIGINAL photos' file stats, so the source tree\n"
+            "(e.g. D:\\暑假旅程) has to be present too - the organized copy alone is not enough.")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, _, _ = open_clip.create_model_and_transforms(args.model, pretrained=args.pretrained)
@@ -97,9 +118,20 @@ def main():
             scores = centroid @ text_feats.T
             label = LABELS[int(np.argmax(scores))][1]
             new_dir = cluster.with_name(f"{cluster.name}_{label}")
+            runner_up = float(np.sort(scores)[-2]) if scores.size > 1 else 0.0
+            margin = float(scores.max()) - runner_up
+            flag = "  <- close call, check this one" if margin < 0.01 else ""
+            print(f"{region.name}\\{cluster.name} -> {new_dir.name}  "
+                  f"(score {scores.max():.3f}, margin {margin:.3f}, {len(embs)} photos){flag}")
+            if args.dry_run:
+                continue
             cluster.rename(new_dir)
             renames.append((str(cluster), str(new_dir)))
-            print(f"{region.name}\\{cluster.name} -> {new_dir.name}  (score {scores.max():.3f}, {len(embs)} photos)")
+
+    if args.dry_run:
+        print("\ndry run - nothing renamed, manifest untouched. "
+              "Drop --dry-run to apply.")
+        return
 
     # Update manifest dest paths for renamed folders
     for old, new in renames:

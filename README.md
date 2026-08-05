@@ -19,7 +19,7 @@ scenes into clusters, and ships with a local web UI for browsing and fixing resu
 | File | Purpose |
 |---|---|
 | `organize_photos.py` | Main pipeline: scan → CLIP encode → people/scenery split → cluster → write out |
-| `label_clusters.py` | Auto-names each `cluster_XXX` folder from its dominant scene |
+| `label_clusters.py` | Auto-names each `cluster_XXX` folder from its dominant scene. **Run `--dry-run` first** — it prints the proposed names, the winning score and the margin over the runner-up, and flags close calls, without touching anything. Note the embeddings are keyed by the *original* photos' file stats, so the source tree has to be mounted too, not just the organized copy. |
 | `app.py` + `static/` | Local web app: browse thumbnails, move photos, rename folders |
 | `start_photo_app.bat` | Launch the web app (localhost only) |
 | `start_photo_app_lan.bat` | Launch the web app on your LAN (phone access; allow firewall on first run) |
