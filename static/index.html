@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>照片整理浏览器</title>
+<title>Photo Organizer 照片整理</title>
 <style>
   :root { --bg:#111418; --panel:#1b2028; --fg:#e8eaed; --muted:#9aa3ad; --accent:#4c8dff; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -43,14 +43,14 @@
 </head>
 <body>
 <header>
-  <h1>📷 照片整理</h1>
+  <h1>📷 Photo Organizer 照片整理</h1>
   <select id="regionSel"></select>
   <select id="folderSel"></select>
   <span id="count"></span>
-  <button id="selBtn">选择</button>
-  <button id="allBtn" style="display:none">全选</button>
-  <button id="moveBtn" class="primary" style="display:none" disabled>移动到…</button>
-  <button id="renameBtn">重命名文件夹</button>
+  <button id="selBtn">选择 Select</button>
+  <button id="allBtn" style="display:none">全选 All</button>
+  <button id="moveBtn" class="primary" style="display:none" disabled>移动到 Move to…</button>
+  <button id="renameBtn">重命名文件夹 Rename folder</button>
 </header>
 <div id="grid"></div>
 
@@ -60,12 +60,12 @@
 </div>
 
 <div id="modal"><div class="box">
-  <b>移动 <span id="mvCount"></span> 张照片到：</b>
+  <b>移动 Move <span id="mvCount"></span> 张照片到 photos to:</b>
   <select id="destSel"></select>
-  <input type="text" id="newFolder" placeholder="或输入新文件夹名（建在本地区 scenery 下）">
+  <input type="text" id="newFolder" placeholder="或输入新文件夹名 / or a new folder name (under this region's scenery)">
   <div style="display:flex; gap:10px; justify-content:flex-end">
-    <button onclick="closeModal()">取消</button>
-    <button class="primary" onclick="doMove()">确定移动</button>
+    <button onclick="closeModal()">取消 Cancel</button>
+    <button class="primary" onclick="doMove()">确定移动 Move</button>
   </div>
 </div></div>
 
@@ -103,7 +103,7 @@ function fillFolders(keepRel) {
 async function loadPhotos(rel) {
   curRel = rel; selected.clear(); updateBar();
   photos = await (await fetch(`/api/photos?rel=${enc(rel)}`)).json();
-  $("count").textContent = `${photos.length} 张`;
+  $("count").textContent = `${photos.length} 张 photos`;
   const g = $("grid"); g.innerHTML = "";
   photos.forEach((p, i) => {
     const d = document.createElement("div"); d.className = "cell"; d.dataset.rel = p.rel;
@@ -121,13 +121,13 @@ function toggleSel(cell) {
 }
 
 function updateBar() {
-  $("moveBtn").textContent = `移动到… (${selected.size})`;
+  $("moveBtn").textContent = `移动到 Move to… (${selected.size})`;
   $("moveBtn").disabled = selected.size === 0;
 }
 
 $("selBtn").onclick = () => {
   selecting = !selecting; document.body.classList.toggle("selecting", selecting);
-  $("selBtn").textContent = selecting ? "取消选择" : "选择";
+  $("selBtn").textContent = selecting ? "取消选择 Cancel" : "选择 Select";
   $("moveBtn").style.display = $("allBtn").style.display = selecting ? "" : "none";
   if (!selecting) { selected.clear(); document.querySelectorAll(".cell.sel").forEach(c => c.classList.remove("sel")); updateBar(); }
 };
@@ -158,21 +158,21 @@ async function doMove() {
   }
   const res = await fetch("/api/move", { method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ items: [...selected], dest }) });
-  if (!res.ok) { toast("移动失败: " + (await res.text())); return; }
+  if (!res.ok) { toast("移动失败 Move failed: " + (await res.text())); return; }
   const j = await res.json();
-  closeModal(); toast(`已移动 ${j.moved} 张（RAW 已跟随）`);
+  closeModal(); toast(`已移动 Moved ${j.moved} 张 photos（RAW 已跟随 RAW files moved too）`);
   await loadTree(curRel);
 }
 
 $("renameBtn").onclick = async () => {
   const cur = curRel.split(/[\\/]/).pop();
-  const name = prompt("新文件夹名：", cur);
+  const name = prompt("新文件夹名 New folder name:", cur);
   if (!name || name === cur) return;
   const res = await fetch("/api/rename", { method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ rel: curRel, new_name: name }) });
-  if (!res.ok) { toast("重命名失败: " + (await res.text())); return; }
+  if (!res.ok) { toast("重命名失败 Rename failed: " + (await res.text())); return; }
   const j = await res.json();
-  toast("已重命名"); await loadTree(j.rel);
+  toast("已重命名 Renamed"); await loadTree(j.rel);
 };
 
 let lbIdx = 0;
