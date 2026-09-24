@@ -30,6 +30,8 @@ models/
 *.mov
 !static/**/*.png
 !static/**/*.svg
+!docs/browse.jpg
+!docs/move.jpg
 
 # ── Runtime output / logs ─────────────────────────────────────────
 *.log
