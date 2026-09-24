@@ -4,6 +4,13 @@ Offline AI photo organizer powered by **CLIP**: classifies people vs. scenery, g
 scenes into clusters, and ships with a local web UI for browsing and fixing results.
 **Photos never leave your machine — everything runs locally.**
 
+<p>
+  <img src="docs/browse.jpg" width="49%" alt="Web UI: a scene cluster of coastal photos">
+  <img src="docs/move.jpg" width="49%" alt="Web UI: moving three selected photos to another folder">
+</p>
+
+*Web UI browsing a scene cluster (left) and moving misfiled photos (right). The demo library uses photos from [Lorem Picsum](https://picsum.photos) (Unsplash License). `python docs/screenshots.py` rebuilds these images.*
+
 ## Features
 
 - **People / scenery classification** — zero-shot via CLIP text prompts, no training data needed.
